@@ -4,7 +4,7 @@ const path = require('path');
 
 const destDirectory = path.join(__dirname, 'project-dist');
 
-const destStylesFile = path.join(destDirectory, 'styles.css');
+const destStylesFile = path.join(destDirectory, 'style.css');
 const srcStylesDirectory = path.join(__dirname, 'styles');
 
 const destAssetsDirectory = path.join(destDirectory, 'assets');
@@ -48,7 +48,6 @@ const readWriteFiles = async (srcDir, destFile) => {
   }
 };
 
-
 const copyDirectory = async (destDirectory, srcDirectory) => {
   try {
     await fs.promises.mkdir(destDirectory, {recursive: true});
@@ -74,47 +73,56 @@ const copyDirectory = async (destDirectory, srcDirectory) => {
 
 };
 
-
 const writeFile = async (file, writeStream) => {
-  let data = '';
-
-  const readStream = fs.createReadStream(file, 'utf-8');
-  readStream.on('data', chunk => data += chunk);
-  readStream.on('end', () => writeStream.write(data));
+  try {
+    let data = '';
+    const readStream = fs.createReadStream(file, 'utf-8');
+    readStream.on('data', chunk => data += chunk);
+    readStream.on('end', () => writeStream.write(data));
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 const replaceHtmlTemplates = async (srcDir, destFile) => {
-  const templateHtmlStream = fs.createReadStream(templateHtmlFile, 'utf-8');
-  const templateHtmlWriteStream = fs.createWriteStream(destFile);
+  try {
+    const templateHtmlStream = fs.createReadStream(templateHtmlFile, 'utf-8');
+    const templateHtmlWriteStream = fs.createWriteStream(destFile);
 
-  let templateData = '';
-  templateHtmlStream.on('data', chunk => templateData += chunk);
-  templateHtmlStream.on('end', async () => {
-    await replaceTemplate(templateData, srcDir, templateHtmlWriteStream);
-  });
+    let templateData = '';
+    templateHtmlStream.on('data', chunk => templateData += chunk);
+    templateHtmlStream.on('end', async () => {
+      await replaceTemplate(templateData, srcDir, templateHtmlWriteStream);
+    });
+  } catch (err) {
+    console.log(err);
+  }
 };
 
-
 const replaceTemplate = async (templateData, srcDir, writeStream) => {
-  let templateDataString = templateData;
-  const files = await fs.promises.readdir(srcDir, {withFileTypes: true});
+  try {
+    let templateDataString = templateData;
+    const files = await fs.promises.readdir(srcDir, {withFileTypes: true});
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const filePath = path.join(srcDir, file.name);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const filePath = path.join(srcDir, file.name);
 
-    if (file.isFile() && path.extname(filePath) === '.html') {
-      let data = '';
+      if (file.isFile() && path.extname(filePath) === '.html') {
+        let data = '';
 
-      const nameWithoutExt = path.parse(file.name).name;
+        const nameWithoutExt = path.parse(file.name).name;
 
-      const templateStream = fs.createReadStream(filePath, 'utf8');
-      templateStream.on('data', chunk => data += chunk);
-      templateStream.on('end', () => {
-        templateDataString = templateDataString.replace(`{{${nameWithoutExt}}}`, data);
-        console.log('templateDataString', templateDataString);
-      });
+        const templateStream = fs.createReadStream(filePath, 'utf8');
+        await templateStream.on('data', chunk => data += chunk);
+        await templateStream.on('end', () => {
+          templateDataString = templateDataString.replace(`{{${nameWithoutExt}}}`, data);
+
+          if (i === files.length - 1) writeStream.write(templateDataString);
+        });
+      }
     }
+  } catch (err) {
+    console.log(err);
   }
-  writeStream.write(templateDataString);
 };
